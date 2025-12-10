@@ -1,207 +1,98 @@
-// dashboard.js - busca dados via API (GET) e renderiza dashboard público
-const API_URL = "https://script.google.com/macros/s/AKfycbzV1eTn_eoldgPtfOlAZRAlJGQoK2WU1BG-cixCKEzv_nn_IxYOSEaCpyOLWWG57JLv/exec";
+/****************************************************
+ * dashboard.js — Gráficos e Resumo · PIB CDB
+ * Requer Chart.js carregado no HTML
+ ****************************************************/
 
-// nomes exatos das abas
-const SHEETS = {
-  entradas: "Entradas",
-  saidas: "Saídas",
-  dizimistas: "Dizimistas",
-  fixas: "Despesas  Fixas"
-};
+const API_EXEC_URL = "https://script.google.com/macros/s/AKfycbzV1eTn_eoldgPtfOlAZRAlJGQoK2WU1BG-cixCKEzv_nn_IxYOSEaCpyOLWWG57JLv/exec";
 
-// cabeçalhos esperados (ordem)
-const HEADERS = {
-  Entradas: ["Data", "Valor", "Nome", "Descrição"],
-  "Saídas": ["Data", "Valor", "Descrição", "Responsável"],
-  Dizimistas: ["Nome", "Telefone", "Observações"],
-  "Despesas  Fixas": ["Nome da Despesa", "Valor", "Dia do Vencimento", "Observação"]
-};
-
-function parseNumber(v){
-  if(v==null) return 0;
-  const s = String(v).replace(/\s/g,'').replace(/\u00A0/g,'').replace(/R\$|BRL/g,'');
-  if(s==='') return 0;
-  if(s.match(/[0-9]+\.[0-9]{3},/)) return parseFloat(s.replace(/\./g,'').replace(',','.'));
-  if(s.indexOf(',')>-1 && s.indexOf('.')===-1) return parseFloat(s.replace(',','.'));
-  const only = s.replace(/[^0-9\.-]/g,'');
-  const n = parseFloat(only);
-  return isNaN(n) ? 0 : n;
-}
-function fmtBRL(v){ return v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
-function parseDateSmart(str){
-  if(!str) return null;
-  str = String(str).trim();
-  const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
-  if(dmy){ let y=+dmy[3]; if(y<100) y+=2000; return new Date(y,+dmy[2]-1,+dmy[1]); }
-  const iso = Date.parse(str); if(!isNaN(iso)) return new Date(iso);
-  return null;
-}
-
-async function fetchList(action){
-  const url = `${API_URL}?action=${action}`;
-  const res = await fetch(url);
-  if(!res.ok) throw new Error(`Erro ao buscar ${action}: ${res.status}`);
-  const txt = await res.text();
-  try { return JSON.parse(txt); } catch(e){ console.error('Erro parse JSON', e, txt); throw e; }
-}
-
-function rowsToObjects(sheetName, rows){
-  const headers = HEADERS[sheetName] || [];
-  return rows.map(r=>{
-    const obj = {};
-    headers.forEach((h,i)=> obj[h] = (r[i] !== undefined ? r[i] : ""));
-    return obj;
+/* JSONP helper */
+function jsonpAPI(params={}) {
+  return new Promise((resolve,reject)=>{
+    const cb = 'cb_'+Math.random().toString(36).slice(2);
+    params.callback = cb;
+    const url = API_EXEC_URL + '?' + Object.keys(params).map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`).join('&');
+    const s = document.createElement('script');
+    s.src = url; s.async = true;
+    window[cb] = (data)=>{ resolve(data); cleanup(); };
+    s.onerror = ()=>{ cleanup(); reject(new Error('JSONP error')); };
+    function cleanup(){ try{ delete window[cb]; }catch(e){} if(s.parentNode) s.parentNode.removeChild(s); }
+    document.body.appendChild(s);
+    setTimeout(()=> { if(window[cb]) { cleanup(); reject(new Error('timeout')); } },15000);
   });
 }
 
-function renderTable(containerId, data){
-  const container = document.getElementById(containerId);
-  if(!container) return;
-  if(!data || data.length === 0){ container.innerHTML = '<p class="small">Nenhum dado disponível.</p>'; return; }
-  const cols = Object.keys(data[0]);
-  let html = '<table><thead><tr>';
-  cols.forEach(c => html += `<th>${c}</th>`);
-  html += '</tr></thead><tbody>';
-  data.forEach(row => {
-    html += '<tr>';
-    cols.forEach(c => html += `<td>${row[c] ?? ""}</td>`);
-    html += '</tr>';
-  });
-  html += '</tbody></table>';
-  container.innerHTML = html;
-}
+/* helpers */
+function parseNumber(v){ if(v==null) return 0; if(typeof v==='number') return v; let s=String(v).trim(); s=s.replace(/\s/g,'').replace('R$','').replace(/BRL/g,''); if(s.match(/^[0-9]{1,3}(\.[0-9]{3})+,[0-9]+$/)){ s=s.replace(/\./g,'').replace(',','.'); } else if(s.indexOf(',')>-1 && s.indexOf('.')===-1){ s=s.replace(',','.'); } s=s.replace(/[^0-9\.\-]/g,''); const n=parseFloat(s); return isNaN(n)?0:n; }
+function fmtBRL(v){ try{return Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}catch(e){return 'R$ '+Number(v||0).toFixed(2);} }
+function parseDateSmart(str){ if(!str) return null; if(str instanceof Date) return str; str=String(str).trim(); const dmy=str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/); if(dmy){ let day=parseInt(dmy[1],10); let month=parseInt(dmy[2],10)-1; let year=parseInt(dmy[3],10); if(year<100) year+=2000; return new Date(year,month,day); } const iso=Date.parse(str); if(!isNaN(iso)) return new Date(iso); return null; }
 
-function monthlyAgg(data, dateCol, valCol){
-  const map = {};
-  data.forEach(it=>{
-    const dt = parseDateSmart(it[dateCol]);
-    if(!dt) return;
-    const key = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
-    map[key] = (map[key] || 0) + parseNumber(it[valCol]);
-  });
-  return Object.keys(map).sort().map(k=>({ month:k, total: map[k] }));
-}
+/* charts */
+let chartBar=null, chartPieE=null, chartPieS=null;
 
-let chartBar = null, chartPie = null;
-function buildCharts(entradas, saidas){
-  const aE = monthlyAgg(entradas, "Data", "Valor");
-  const aS = monthlyAgg(saidas, "Data", "Valor");
-  const labels = Array.from(new Set([...aE.map(x=>x.month), ...aS.map(x=>x.month)])).sort();
-  const labelsFmt = labels.map(l=>{ const [y,m] = l.split('-'); return new Date(+y,+m-1,1).toLocaleString('pt-BR',{month:'short',year:'numeric'}); });
-  const mapE = Object.fromEntries(aE.map(x=>[x.month,x.total]));
-  const mapS = Object.fromEntries(aS.map(x=>[x.month,x.total]));
-  const dataE = labels.map(l=> mapE[l] || 0);
-  const dataS = labels.map(l=> mapS[l] || 0);
-
-  const ctxBar = document.getElementById('chartBar').getContext('2d');
+function buildBar(ctxEl, labels, dataE, dataS){
+  if(!ctxEl) return;
+  const ctx=ctxEl.getContext('2d');
   if(chartBar) chartBar.destroy();
-  chartBar = new Chart(ctxBar, {
-    type: 'bar',
-    data: { labels: labelsFmt, datasets: [
-      { label: 'Entradas', data: dataE, backgroundColor: '#1366d6' },
-      { label: 'Saídas', data: dataS, backgroundColor: '#d23b3b' }
-    ]},
-    options: { responsive:true, scales:{ y:{ ticks:{ callback: v => fmtBRL(v) } } } }
-  });
-
-  const byType = {};
-  entradas.forEach(it=>{
-    const key = it['Descrição'] || it['Nome'] || 'Outros';
-    byType[key] = (byType[key] || 0) + parseNumber(it['Valor']);
-  });
-  const pieLabels = Object.keys(byType).slice(0,12);
-  const pieData = pieLabels.map(k => byType[k]);
-  const ctxPie = document.getElementById('chartPie').getContext('2d');
-  if(chartPie) chartPie.destroy();
-  chartPie = new Chart(ctxPie, { type:'pie', data:{ labels: pieLabels, datasets:[{ data: pieData }] }, options:{ responsive:true }});
+  chartBar = new Chart(ctx, { type:'bar', data:{ labels, datasets:[ {label:'Entradas', data:dataE}, {label:'Saídas', data:dataS} ] }, options:{ responsive:true, scales:{ y:{ beginAtZero:true, ticks:{ callback: v => fmtBRL(v) } } } } });
+}
+function buildPie(ctxEl, labels, data){
+  if(!ctxEl) return null;
+  const ctx=ctxEl.getContext('2d');
+  return new Chart(ctx, { type:'pie', data:{ labels, datasets:[{ data }] }, options:{ responsive:true } });
 }
 
-function renderMonthlyTable(entradas, saidas){
-  const e = monthlyAgg(entradas,'Data','Valor');
-  const s = monthlyAgg(saidas,'Data','Valor');
-  const mapE = Object.fromEntries(e.map(x=>[x.month,x.total]));
-  const mapS = Object.fromEntries(s.map(x=>[x.month,x.total]));
-  const months = Array.from(new Set([...Object.keys(mapE), ...Object.keys(mapS)])).sort();
-  let html = '<table><thead><tr><th>Mês</th><th>Entradas</th><th>Saídas</th><th>Saldo</th></tr></thead><tbody>';
-  months.forEach(m=>{
-    const eV = mapE[m] || 0;
-    const sV = mapS[m] || 0;
-    const saldo = eV - sV;
-    const [y,mm] = m.split('-');
-    const dt = new Date(+y,+mm-1,1);
-    html += `<tr><td>${dt.toLocaleString('pt-BR',{month:'long',year:'numeric'})}</td><td>${fmtBRL(eV)}</td><td>${fmtBRL(sV)}</td><td>${fmtBRL(saldo)}</td></tr>`;
-  });
-  html += '</tbody></table>';
-  document.getElementById('monthlyTable').innerHTML = html;
+/* render */
+function renderFromData(res){
+  if(!res) return;
+  const mesesObj = res.meses || {};
+  const catE = res.categorias_entrada || {};
+  const catS = res.categorias_saida || {};
+
+  const months = Object.keys(mesesObj).sort();
+  const labels = months.map(k => { const [y,m]=k.split('-'); return new Date(parseInt(y),parseInt(m)-1,1).toLocaleString('pt-BR',{month:'short', year:'numeric'}); });
+  const dataE = months.map(k => mesesObj[k].entradas||0);
+  const dataS = months.map(k => mesesObj[k].saidas||0);
+
+  document.getElementById('totalEntradas') && (document.getElementById('totalEntradas').textContent = fmtBRL(dataE.reduce((a,b)=>a+b,0)));
+  document.getElementById('totalSaidas') && (document.getElementById('totalSaidas').textContent = fmtBRL(dataS.reduce((a,b)=>a+b,0)));
+  const saldo = (dataE.reduce((a,b)=>a+b,0)) - (dataS.reduce((a,b)=>a+b,0));
+  if(document.getElementById('saldoFinal')){ const el=document.getElementById('saldoFinal'); el.textContent = fmtBRL(saldo); el.style.color = saldo>=0? '#0b9b3a':'#d23b3b'; }
+  if(document.getElementById('lastUpdate')) document.getElementById('lastUpdate').textContent = new Date().toLocaleString('pt-BR');
+
+  // monthly table
+  if(document.getElementById('monthlyTable')){
+    let html = '<table><thead><tr><th>Mês</th><th>Entradas</th><th>Saídas</th><th>Saldo</th></tr></thead><tbody>';
+    months.forEach((k,i)=>{
+      const e = dataE[i]||0; const s = dataS[i]||0; const sal = e-s;
+      html += `<tr><td>${labels[i]}</td><td>${fmtBRL(e)}</td><td>${fmtBRL(s)}</td><td style="font-weight:700;color:${sal>=0?'#0b9b3a':'#d23b3b'}">${fmtBRL(sal)}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('monthlyTable').innerHTML = html;
+  }
+
+  // charts
+  buildBar(document.getElementById('chartBar'), labels, dataE, dataS);
+  if(chartPieE) try{ chartPieE.destroy(); }catch(e){}
+  if(chartPieS) try{ chartPieS.destroy(); }catch(e){}
+  chartPieE = buildPie(document.getElementById('chartPie'), Object.keys(catE), Object.keys(catE).map(k=>catE[k]));
+  chartPieS = buildPie(document.getElementById('chartPieSaidas') || document.getElementById('chartPie2'), Object.keys(catS), Object.keys(catS).map(k=>catS[k]));
 }
 
+/* load */
 async function loadDashboard(){
   try{
-    document.getElementById('lastUpdate').textContent = 'Carregando...';
-    const rawEntr = await fetchList('entradas');
-    const rawSaid = await fetchList('saidas');
-    const rawDiz  = await fetchList('dizimistas');
-    const rawFix  = await fetchList('fixas');
-
-    const entradas = rowsToObjects(SHEETS.entradas, rawEntr);
-    const saidas   = rowsToObjects(SHEETS.saidas, rawSaid);
-    const dizimistas = rowsToObjects(SHEETS.dizimistas, rawDiz);
-    const despesasFixas = rowsToObjects(SHEETS.fixas, rawFix);
-
-    const totalEntr = entradas.reduce((acc,it)=> acc + parseNumber(it['Valor']), 0);
-    const totalSaid = saidas.reduce((acc,it)=> acc + parseNumber(it['Valor']), 0);
-    const saldo = totalEntr - totalSaid;
-
-    document.getElementById('totalEntradas').textContent = fmtBRL(totalEntr);
-    document.getElementById('totalSaidas').textContent = fmtBRL(totalSaid);
-    const sf = document.getElementById('saldoFinal');
-    sf.textContent = fmtBRL(saldo);
-    sf.style.color = saldo >= 0 ? '#0b9b3a' : '#d23b3b';
-    document.getElementById('lastUpdate').textContent = new Date().toLocaleString('pt-BR');
-
-    renderTable('tableEntradas', entradas);
-    renderTable('tableSaidas', saidas);
-    renderTable('tableDizimistas', dizimistas);
-    renderTable('tableDespesasFixas', despesasFixas);
-
-    buildCharts(entradas, saidas);
-    renderMonthlyTable(entradas, saidas);
-
-  } catch(err){
-    console.error('Erro no dashboard:', err);
-    alert('Erro ao carregar dashboard. Veja console para detalhes.');
-    document.getElementById('lastUpdate').textContent = 'Erro';
+    const res = await jsonpAPI({ action: 'grafico' });
+    renderFromData(res);
+  }catch(err){
+    console.error('Erro ao carregar grafico', err);
+    if(document.getElementById('monthlyTable')) document.getElementById('monthlyTable').innerHTML = '<p class="small">Erro ao carregar gráficos.</p>';
   }
 }
 
-async function fetchList(action){
-  const url = `${API_URL}?action=${action}`;
-  const res = await fetch(url);
-  if(!res.ok) throw new Error(`Erro ao buscar ${action}: ${res.status}`);
-  const txt = await res.text();
-  try { return JSON.parse(txt); } catch(e){ console.error('Erro parse JSON', e, txt); throw e; }
-}
-
-async function callGenerateFixed(){
-  if(!confirm('Gerar despesas fixas do mês na aba Saídas agora?')) return;
-  try{
-    const form = new URLSearchParams();
-    form.append('action','generate_fixed');
-    form.append('sheet','Saídas');
-    const res = await fetch(API_URL, { method:'POST', body: form });
-    const txt = await res.text();
-    if(res.ok) {
-      alert('Despesas fixas geradas com sucesso.');
-      loadDashboard();
-    } else {
-      alert('Erro ao gerar despesas fixas: ' + txt);
-    }
-  } catch(e){
-    console.error(e);
-    alert('Erro ao gerar despesas fixas (ver console).');
-  }
-}
-
-document.getElementById('btnRefresh').addEventListener('click', () => loadDashboard());
-document.getElementById('btnGenFix').addEventListener('click', () => callGenerateFixed());
-loadDashboard();
+document.addEventListener('DOMContentLoaded', () => {
+  if(document.getElementById('totalEntradas')) document.getElementById('totalEntradas').textContent = 'Carregando...';
+  if(document.getElementById('totalSaidas')) document.getElementById('totalSaidas').textContent = 'Carregando...';
+  if(document.getElementById('saldoFinal')) document.getElementById('saldoFinal').textContent = 'Carregando...';
+  if(document.getElementById('lastUpdate')) document.getElementById('lastUpdate').textContent = 'Carregando...';
+  loadDashboard();
+});
