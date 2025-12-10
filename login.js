@@ -1,14 +1,40 @@
-// usa cfg guardado (se existir) ou credenciais padrão
-const DEFAULT_USER = localStorage.getItem('cfg_user') || 'adminpib';
-const DEFAULT_PASS = localStorage.getItem('cfg_pass') || 'tesourariapib2025';
+/****************************************************
+ * login.js — login simples (front-end)
+ * Usa usuário/senha armazenados no localStorage (configurável)
+ ****************************************************/
 
-function login(){
-  const u = document.getElementById('user').value.trim();
-  const p = document.getElementById('pass').value.trim();
-  if(u === DEFAULT_USER && p === DEFAULT_PASS){
-    localStorage.setItem('logged','true');
-    window.location.href = 'admin.html';
-  } else {
-    document.getElementById('msg').innerText = 'Usuário ou senha incorretos.';
+// padrão inicial — você pode alterar em Configurações (admin)
+const DEFAULT_USER = "adminpib";
+const DEFAULT_PASS = "tesourariapib2025";
+
+// Ao carregar a página de login, preenche campos e liga o form
+document.addEventListener("DOMContentLoaded", () => {
+  // se não existir credencial no localStorage, grava a padrão
+  if (!localStorage.getItem("tesou_user")) {
+    localStorage.setItem("tesou_user", DEFAULT_USER);
   }
-}
+  if (!localStorage.getItem("tesou_pass")) {
+    localStorage.setItem("tesou_pass", DEFAULT_PASS);
+  }
+
+  const form = document.getElementById("loginForm");
+  if (form) {
+    form.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const user = (document.getElementById("user").value || "").trim();
+      const pass = (document.getElementById("pass").value || "").trim();
+
+      const storedUser = localStorage.getItem("tesou_user");
+      const storedPass = localStorage.getItem("tesou_pass");
+
+      if (user === storedUser && pass === storedPass) {
+        // cria token simples
+        sessionStorage.setItem("tesou_token", btoa(user + ":" + Date.now()));
+        // redireciona para admin
+        window.location.href = "admin.html";
+      } else {
+        alert("Usuário ou senha inválidos.");
+      }
+    });
+  }
+});
