@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Login · Tesouraria</title>
+  <style>
+    body{display:flex;align-items:center;justify-content:center;height:100vh;font-family:Arial,Helvetica;background:#f5f7fb}
+    .box{background:#fff;padding:22px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,0.08);width:320px}
+    input{width:100%;padding:10px;margin:8px 0;border-radius:6px;border:1px solid #e6eef8}
+    button{width:100%;padding:10px;background:#1366d6;color:#fff;border:0;border-radius:6px;cursor:pointer}
+    .small{font-size:13px;color:#666}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Acesso</h2>
+    <input id="user" placeholder="Usuário" />
+    <input id="pass" placeholder="Senha" type="password" />
+    <button onclick="login()">Entrar</button>
+    <p class="small">Usuário padrão: <b>adminpib</b> — senha: <b>tesourariapib2025</b></p>
+    <p id="msg" style="color:red"></p>
+  </div>
+  <script src="login.js"></script>
+</body>
+</html>
