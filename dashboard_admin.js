@@ -3,7 +3,8 @@
  * Comunicação com Google Apps Script usando JSONP
  ****************************************************/
 
-const API = "https://script.google.com/macros/s/AKfycbzdeHEsqNvldjx-38-W3ynWyC_pLi5OvH2VCCxmNyg/dev";
+const API = "https://script.google.com/macros/s/AKfycbzV1eTn_eoldgPtfOlAZRAlJGQoK2WU1BG-cixCKEzv_nn_IxYOSEaCpyOLWWG57JLv/exec";
+
 
 /****************************************************
  * JSONP HELPER — permite GET sem CORS
