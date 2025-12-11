@@ -2,7 +2,8 @@
  * dashboard.js — Gráficos e Resumo · PIB CDB
  * Requer Chart.js carregado no HTML
  ****************************************************/
-const API_EXEC_URL = "https://script.google.com/macros/s/AKfycbzV1eTn_eoldgPtfOlAZRAlJGQoK2WU1BG-cixCKEzv_nn_IxYOSEaCpyOLWWG57JLv/exec";
+
+const API = "https://script.google.com/macros/s/AKfycbz1SwoOp9hhXkYkMZwX1XiTgJjokQX_2m_05c4hM4cMaDkbtV-wzh_InO1RYwj8wjJ8/exec";
 
 
 /* JSONP helper */
