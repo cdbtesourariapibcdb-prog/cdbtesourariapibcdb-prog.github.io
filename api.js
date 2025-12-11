@@ -1,13 +1,5 @@
-/* api.js — responsável por chamadas JSONP ao Web App do Apps Script */
-
-/* URL DO SEU WEB APP (EXEC) */
 const API_EXEC_URL = "https://script.google.com/macros/s/AKfycbz1SwoOp9hhXkYkMZwX1XiTgJjokQX_2m_05c4hM4cMaDkbtV-wzh_InO1RYwj8wjJ8/exec";
 
-/**
- * Faz chamada JSONP ao Apps Script
- * @param {object} params - parâmetros da requisição
- * @returns {Promise<any>}
- */
 function jsonpCall(params = {}) {
   return new Promise((resolve, reject) => {
     try {
@@ -23,12 +15,9 @@ function jsonpCall(params = {}) {
       script.onerror = () => reject("Erro ao carregar JSONP");
 
       window[callbackName] = (data) => {
-        try {
-          resolve(data);
-        } finally {
-          delete window[callbackName];
-          script.remove();
-        }
+        resolve(data);
+        delete window[callbackName];
+        script.remove();
       };
 
       document.body.appendChild(script);
