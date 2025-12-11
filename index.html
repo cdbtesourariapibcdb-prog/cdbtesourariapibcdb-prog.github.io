@@ -1,26 +1,51 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Login · Tesouraria</title>
-  <link rel="stylesheet" href="style.css"/>
+  <meta charset="UTF-8">
+  <title>Painel Administrativo</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main style="display:flex;align-items:center;justify-content:center;height:100vh">
-    <div style="width:360px;background:#fff;padding:22px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,0.08)">
-      <h2>Acesso</h2>
-      <form id="loginForm">
-        <input id="user" placeholder="Usuário" required />
-        <input id="pass" placeholder="Senha" type="password" required />
-        <button type="submit">Entrar</button>
-      </form>
-      <p class="small">Usuário padrão: <b>adminpib</b> — senha: <b>tesourariapib2025</b></p>
-    </div>
-  </main>
-<script src="api.js"></script>
-</body>
-</html>
+
+<h1>Painel Administrativo</h1>
+
+<div class="container">
+  <h2>Entradas</h2>
+  <button id="btnAddEntrada">+ Adicionar</button>
+  <div id="tableEntradas"></div>
+</div>
+
+<div class="container">
+  <h2>Saídas</h2>
+  <button id="btnAddSaida">+ Adicionar</button>
+  <div id="tableSaidas"></div>
+</div>
+
+<div class="container">
+  <h2>Dizimistas</h2>
+  <button id="btnAddDizimista">+ Adicionar</button>
+  <div id="tableDizimistas"></div>
+</div>
+
+<div class="container">
+  <h2>Despesas Fixas</h2>
+  <button id="btnAddFixa">+ Adicionar</button>
+  <button id="btnGenerateFixedUI">Gerar todas as fixas</button>
+  <div id="tableFixas"></div>
+</div>
+
+<!-- Modal -->
+<div id="modal">
+  <div id="modalBox">
+    <h3 id="modalTitle"></h3>
+    <div id="modalBody"></div>
+    <button id="modalSave">Salvar</button>
+    <button onclick="closeModal()">Cancelar</button>
+  </div>
+</div>
 
 <script src="api.js"></script>
 <script src="admin.js"></script>
+
+</body>
+</html>
