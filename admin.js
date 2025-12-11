@@ -58,7 +58,8 @@ async function deleteItem(sheet, row){
 /* fetch list */
 async function loadList(sheet, containerId){
   try {
-    const data = await jsonpCall({ action: sheet.toLowerCase() });
+    const data = await jsonpCall({ action: sheet });
+
     const wrap = document.getElementById(containerId);
 
     if (!wrap) return;
