@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Painel Financeiro · PIB CDB</title>
 
+  <!-- Carrega API primeiro -->
+  <script src="api.js"></script>
+
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -51,7 +54,7 @@
     <div id="monthlyTable">Carregando...</div>
   </div>
 
-  <!-- Carrega o JS do dashboard -->
+  <!-- Carrega o JS do dashboard (DEPOIS do api.js e Chart.js) -->
   <script src="dashboard.js"></script>
 
 </body>
