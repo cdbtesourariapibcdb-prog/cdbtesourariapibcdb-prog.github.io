@@ -1,50 +1,39 @@
-/* api.js — centraliza chamadas à API (JSONP) */
-/* IMPORTANT: replace API_EXEC with your real /exec URL after deploying Apps Script */
+/* api.js — responsável por chamadas JSONP ao Web App do Apps Script */
 
-const API_EXEC = "REPLACE_WITH_YOUR_EXEC_URL"; // <-- Replace with your .../exec link
+/* URL DO SEU WEB APP (EXEC) */
+const API_EXEC_URL = "https://script.google.com/macros/s/AKfycbz1SwoOp9hhXkYkMZwX1XiTgJjokQX_2m_05c4hM4cMaDkbtV-wzh_InO1RYwj8wjJ8/exec";
 
-function jsonpCall(params = {}, timeout = 15000) {
+/**
+ * Faz chamada JSONP ao Apps Script
+ * @param {object} params - parâmetros da requisição
+ * @returns {Promise<any>}
+ */
+function jsonpCall(params = {}) {
   return new Promise((resolve, reject) => {
-    if (!API_EXEC || API_EXEC.indexOf("REPLACE_WITH_YOUR_EXEC_URL") !== -1) {
-      reject(new Error("API_EXEC not set. Replace placeholder in api.js with your /exec URL."));
-      return;
+    try {
+      const callbackName = "cb_" + Math.random().toString(36).substring(2);
+      params.callback = callbackName;
+
+      const script = document.createElement("script");
+      const query = Object.keys(params)
+        .map(k => encodeURIComponent(k) + "=" + encodeURIComponent(params[k]))
+        .join("&");
+
+      script.src = API_EXEC_URL + "?" + query;
+      script.onerror = () => reject("Erro ao carregar JSONP");
+
+      window[callbackName] = (data) => {
+        try {
+          resolve(data);
+        } finally {
+          delete window[callbackName];
+          script.remove();
+        }
+      };
+
+      document.body.appendChild(script);
+    } catch (err) {
+      reject(err);
     }
-    const cb = "cb_" + Math.random().toString(36).slice(2);
-    params.callback = cb;
-    const q = Object.keys(params).map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`).join("&");
-    const url = API_EXEC + "?" + q;
-
-    const script = document.createElement("script");
-    script.src = url;
-    script.async = true;
-
-    let settled = false;
-    window[cb] = (data) => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      resolve(data);
-    };
-
-    script.onerror = () => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      reject(new Error("JSONP load error"));
-    };
-
-    function cleanup() {
-      try { delete window[cb]; } catch(e){}
-      if (script.parentNode) script.parentNode.removeChild(script);
-    }
-
-    document.body.appendChild(script);
-
-    setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      reject(new Error("JSONP timeout"));
-    }, timeout);
   });
 }
