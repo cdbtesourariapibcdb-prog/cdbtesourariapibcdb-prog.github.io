@@ -38,3 +38,21 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+function login() {
+  const user = document.getElementById("user").value.trim();
+  const pass = document.getElementById("pass").value.trim();
+
+  if (user === "" || pass === "") {
+    alert("Preencha todos os campos!");
+    return;
+  }
+
+  // Usuário fixo só para testes
+  if (user === "admin" && pass === "1234") {
+    localStorage.setItem("auth", "ok");
+    window.location.href = "admin.html";
+  } else {
+    alert("Usuário ou senha incorretos");
+  }
+}
+
