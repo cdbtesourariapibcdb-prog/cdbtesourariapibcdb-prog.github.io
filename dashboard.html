@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Painel Financeiro · PIB CDB</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body{font-family:Arial;background:#f5f7fb;margin:20px}
+    h2{margin-top:30px}
+    .box{background:#fff;padding:20px;margin-bottom:20px;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,0.08)}
+    canvas{max-width:100%}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{padding:8px;border-bottom:1px solid #eee;text-align:left}
+    th{background:#f1f1f1}
+  </style>
+
+</head>
+<body>
+
+  <h1>Painel Financeiro</h1>
+  <p>Última atualização: <span id="lastUpdate">...</span></p>
+
+  <div class="box">
+    <h2>Resumo</h2>
+    <p><b>Total Entradas: </b> <span id="totalEntradas">Carregando...</span></p>
+    <p><b>Total Saídas: </b> <span id="totalSaidas">Carregando...</span></p>
+    <p><b>Saldo Final: </b> <span id="saldoFinal">Carregando...</span></p>
+  </div>
+
+  <div class="box">
+    <h2>Gráfico Mensal: Entradas x Saídas</h2>
+    <canvas id="chartBar"></canvas>
+  </div>
+
+  <div class="box">
+    <h2>Entradas por Categoria</h2>
+    <canvas id="chartPie"></canvas>
+  </div>
+
+  <div class="box">
+    <h2>Saídas por Categoria</h2>
+    <canvas id="chartPieSaidas"></canvas>
+  </div>
+
+  <div class="box">
+    <h2>Tabela Mensal</h2>
+    <div id="monthlyTable">Carregando...</div>
+  </div>
+
+  <!-- Carrega o JS do dashboard -->
+  <script src="dashboard.js"></script>
+
+</body>
+</html>
